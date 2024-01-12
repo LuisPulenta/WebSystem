@@ -1,0 +1,108 @@
+﻿@page "/users/createadmin"
+@using System.Security.Cryptography
+@using System.Text
+@inject IRepository repository
+@inject NavigationManager navigationManager
+@inject SweetAlertService sweetAlertService
+
+<h3>Crear Administrador</h3>
+
+<UserForm @ref="userForm" UserDTO="userDTO" OnValidSubmit="Create" ReturnAction="Return" />
+
+@code {
+
+    private UserDTO userDTO = new();
+    private User user = new();
+
+    protected override void OnInitialized()
+    {
+        user.FirstName = "";
+        user.LastName = "";
+        user.Email = "";
+        user.Password = "";
+        user.IsAdmin = false;
+        user.IsConfirm = false;
+        user.Token = "";
+
+        userDTO.FirstName = "";
+        userDTO.LastName = "";
+        userDTO.Email = "";
+        userDTO.Password = "";
+        userDTO.Password2 = "";
+        userDTO.Password2Confirm = "";
+        userDTO.IsAdmin = false;
+        userDTO.IsConfirm = false;
+        userDTO.Token = "";
+    }
+
+    private UserForm? userForm;
+
+    const int keySize = 64;
+    const int iterations = 35;
+    HashAlgorithmName hashAlgorithm = HashAlgorithmName.SHA512;
+
+    private async Task Create()
+    {
+        user.FirstName = userDTO.FirstName;
+        user.LastName = userDTO.LastName;
+        user.Email = userDTO.Email;
+        user.IsAdmin = true;
+        user.IsConfirm = false;
+        user.Token = CreateToken();
+        user.Password = HashPasword(userDTO.Password2, out byte[] salt);
+        var httpResponse = await repository.Post("/api/users", user);
+        if (httpResponse.Error)
+        {
+            var message = await httpResponse.GetErrorMessage();
+            await sweetAlertService.FireAsync("Error", message , SweetAlertIcon.Error);
+            return;
+        }
+
+        userForm!.FormPostedSuccessfully = true;
+        await sweetAlertService.FireAsync("Confirmación", "La cuenta ha sido creada con éxito. Se ha enviado un correo electrónico con las instrucciones para activar el usuario.", SweetAlertIcon.Info);
+        navigationManager.NavigateTo("/users");
+    }
+
+    private void Return()
+    {
+        navigationManager.NavigateTo("/users");
+    }
+
+    string HashPasword(string password, out byte[] salt)
+    {
+        salt = RandomNumberGenerator.GetBytes(keySize);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations,
+            hashAlgorithm,
+            keySize);
+        return Convert.ToHexString(hash);
+    }
+
+    bool VerifyPassword(string password, string hash, byte[] salt)
+    {
+        var hashToCompare = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, hashAlgorithm, keySize);
+
+        return CryptographicOperations.FixedTimeEquals(hashToCompare, Convert.FromHexString(hash));
+    }
+
+    private string CreateToken()
+    {
+        Random rdn = new Random();
+        string caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890$#@";
+        int longitud = caracteres.Length;
+        char letra;
+        int longitudContrasenia = 15;
+        string contraseniaAleatoria = string.Empty;
+        for (int i = 0; i < longitudContrasenia; i++)
+        {
+            letra = caracteres[rdn.Next(longitud)];
+            contraseniaAleatoria += letra.ToString();
+        }
+        return contraseniaAleatoria;
+    }
+
+
+    
+}
