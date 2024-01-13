@@ -4,10 +4,11 @@
 @inject SweetAlertService sweetAlertService
 
 
-<h3>Usuarios</h3>
+<h3>Administradores y Usuarios</h3>
 
-<a class="btn btn-primary mb-3" href="/users/createuser">Nuevo Usuario</a>
-<a class="btn btn-primary mb-3" href="/users/createadmin">Nuevo Administrador</a>
+<a class="btn btn-primary mb-3" href="/users/createuser?type=admin">Nuevo Administrador</a>
+<a class="btn btn-primary mb-3" href="/users/createuser?type=user">Nuevo Usuario</a>
+
 
 <GenericList MyList="Users">
     <Body>
